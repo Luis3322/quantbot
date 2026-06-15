@@ -1,1 +1,880 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantBot — Futuros Crypto Signals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg:        #080c14;
+      --bg2:       #0d1220;
+      --bg3:       #121929;
+      --border:    #1e2d45;
+      --border2:   #243550;
+
+      --enter:     #00e5a0;
+      --enter-dim: #00b37e;
+      --enter-bg:  rgba(0,229,160,0.07);
+      --enter-glow:rgba(0,229,160,0.18);
+
+      --wait:      #f5c518;
+      --wait-dim:  #c99d10;
+      --wait-bg:   rgba(245,197,24,0.07);
+
+      --discard:   #4a5568;
+      --discard-bg:rgba(74,85,104,0.07);
+
+      --danger:    #ff4d6d;
+      --danger-bg: rgba(255,77,109,0.08);
+
+      --text:      #e2eaf5;
+      --text2:     #8fa3be;
+      --text3:     #4d6280;
+
+      --accent:    #3b82f6;
+      --accent2:   #60a5fa;
+
+      --mono: "JetBrains Mono", monospace;
+      --sans: "Space Grotesk", sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ── */
+    .app { max-width: 1440px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--enter), var(--accent));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+    .logo-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px; }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--discard);
+      transition: background .3s;
+    }
+    .status-dot.live { background: var(--enter); box-shadow: 0 0 8px var(--enter); animation: pulse 2s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .status-label { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 48px 0 32px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .hero-copy h1 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 10px;
+    }
+
+    .hero-copy h1 span { color: var(--enter); }
+    .hero-copy p { color: var(--text2); font-size: 15px; max-width: 480px; }
+
+    /* ── Scan Button ── */
+    .scan-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--enter);
+      color: #000;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      letter-spacing: -0.2px;
+    }
+
+    .scan-btn:hover:not(:disabled) {
+      background: #00ffb3;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 32px rgba(0,229,160,0.35);
+    }
+
+    .scan-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .scan-btn .icon { font-size: 18px; }
+    .scan-btn.scanning .icon { animation: spin 1s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Stats Bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      padding: 20px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; font-family: var(--mono); }
+    .stat-value { font-size: 22px; font-weight: 700; font-family: var(--mono); }
+    .stat-value.enter { color: var(--enter); }
+    .stat-value.wait  { color: var(--wait);  }
+    .stat-value.total { color: var(--accent2); }
+    .stat-value.scan-time { font-size: 13px; color: var(--text2); }
+
+    /* ── Filter Bar ── */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+    .filter-btn.active-enter { background: var(--enter-bg); border-color: var(--enter); color: var(--enter); }
+    .filter-btn.active-wait  { background: var(--wait-bg);  border-color: var(--wait);  color: var(--wait);  }
+    .filter-btn.active-all   { background: rgba(59,130,246,.1); border-color: var(--accent); color: var(--accent2); }
+
+    /* ── Signal Grid ── */
+    .signals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Signal Card ── */
+    .signal-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      transition: transform .2s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .signal-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+
+    .signal-card.enter::before { background: linear-gradient(90deg, var(--enter), var(--accent)); }
+    .signal-card.wait::before  { background: linear-gradient(90deg, var(--wait), #e67e22); }
+    .signal-card.discard::before { background: var(--border2); }
+
+    .signal-card.enter { border-color: rgba(0,229,160,.2); box-shadow: 0 0 0 1px rgba(0,229,160,.05), 0 4px 24px rgba(0,0,0,.3); }
+    .signal-card.wait  { border-color: rgba(245,197,24,.15); }
+
+    .signal-card.enter:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(0,229,160,.15), 0 12px 40px rgba(0,229,160,.1); }
+    .signal-card:not(.enter):hover { transform: translateY(-1px); }
+
+    /* Card Header */
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .card-symbol {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: var(--mono);
+      letter-spacing: -0.5px;
+    }
+
+    .card-change {
+      font-size: 13px;
+      color: var(--enter);
+      font-family: var(--mono);
+      margin-top: 2px;
+    }
+
+    .card-price {
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .card-price-label { font-size: 10px; color: var(--text3); text-align: right; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Status Badge */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-family: var(--mono);
+    }
+
+    .badge-enter  { background: var(--enter-bg);  color: var(--enter);  border: 1px solid rgba(0,229,160,.3); }
+    .badge-wait   { background: var(--wait-bg);   color: var(--wait);   border: 1px solid rgba(245,197,24,.3); }
+    .badge-discard{ background: var(--discard-bg); color: var(--discard); border: 1px solid var(--border); }
+
+    /* Score bar */
+    .score-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .score-label { font-size: 11px; color: var(--text3); font-family: var(--mono); white-space: nowrap; }
+
+    .score-track {
+      flex: 1;
+      height: 5px;
+      background: var(--bg3);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1s ease;
+    }
+
+    .score-fill.high   { background: linear-gradient(90deg, var(--enter-dim), var(--enter)); }
+    .score-fill.medium { background: linear-gradient(90deg, #e67e22, var(--wait)); }
+    .score-fill.low    { background: var(--discard); }
+
+    .score-num { font-size: 12px; font-weight: 700; font-family: var(--mono); }
+    .score-num.high   { color: var(--enter); }
+    .score-num.medium { color: var(--wait);  }
+    .score-num.low    { color: var(--discard); }
+
+    /* Price levels grid */
+    .levels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .level-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .level-box.entry-box { border-color: var(--accent); background: rgba(59,130,246,.06); }
+    .level-box.sl-box    { border-color: rgba(255,77,109,.3); background: var(--danger-bg); }
+    .level-box.tp1-box   { border-color: rgba(0,229,160,.2); background: rgba(0,229,160,.04); }
+    .level-box.tp2-box   { border-color: rgba(0,229,160,.1); }
+
+    .level-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text3);
+      font-family: var(--mono);
+      margin-bottom: 3px;
+    }
+
+    .level-label.entry { color: var(--accent2); }
+    .level-label.sl    { color: var(--danger); }
+    .level-label.tp1   { color: var(--enter); }
+    .level-label.tp2   { color: var(--enter-dim); }
+
+    .level-value {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .level-pct {
+      font-size: 10px;
+      font-family: var(--mono);
+      margin-top: 1px;
+    }
+
+    /* RR badge */
+    .rr-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--bg3);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    .rr-label { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+    .rr-value {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .rr-value.good  { color: var(--enter); }
+    .rr-value.ok    { color: var(--wait);  }
+    .rr-value.bad   { color: var(--danger); }
+
+    /* Indicators row */
+    .indicators {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+
+    .ind-chip {
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-family: var(--mono);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+    }
+
+    .ind-chip.green { color: var(--enter);   border-color: rgba(0,229,160,.2); background: rgba(0,229,160,.05); }
+    .ind-chip.yellow{ color: var(--wait);    border-color: rgba(245,197,24,.2); background: rgba(245,197,24,.05); }
+    .ind-chip.red   { color: var(--danger);  border-color: rgba(255,77,109,.2); background: rgba(255,77,109,.05); }
+
+    /* Pattern tag */
+    .pattern-tag {
+      font-size: 10px;
+      color: var(--text3);
+      font-family: var(--mono);
+      margin-top: 8px;
+    }
+
+    .pattern-tag span { color: var(--wait); }
+
+    /* Discard reason */
+    .discard-reason {
+      padding: 10px 12px;
+      background: rgba(74,85,104,.1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text3);
+      font-family: var(--mono);
+      margin-top: 8px;
+    }
+
+    /* Collapse toggle */
+    .collapse-btn {
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 11px;
+      cursor: pointer;
+      font-family: var(--mono);
+      padding: 4px 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .score-breakdown {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: var(--bg3);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: none;
+    }
+
+    .score-breakdown.open { display: block; }
+    .score-breakdown li { font-size: 11px; color: var(--text2); font-family: var(--mono); margin-bottom: 2px; list-style: none; }
+
+    /* ── Empty / Loading / Error states ── */
+    .state-box {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text3);
+    }
+
+    .state-box .big-icon { font-size: 56px; margin-bottom: 16px; display: block; }
+    .state-box h2 { font-size: 20px; color: var(--text2); margin-bottom: 8px; }
+    .state-box p  { font-size: 14px; }
+
+    .spinner {
+      width: 48px; height: 48px;
+      border: 3px solid var(--border2);
+      border-top-color: var(--enter);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    /* ── Disclaimer ── */
+    .disclaimer {
+      margin-top: 48px;
+      padding: 16px 20px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 12px;
+      color: var(--text3);
+      line-height: 1.6;
+    }
+
+    .disclaimer strong { color: var(--wait); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .signals-grid { grid-template-columns: 1fr; }
+      .hero { padding: 28px 0 20px; }
+      .hero-copy h1 { font-size: 26px; }
+    }
+
+    /* ── Live price pulse ── */
+    @keyframes priceFlash {
+      0%   { color: var(--enter); }
+      100% { color: inherit; }
+    }
+    .price-updated { animation: priceFlash 1s ease; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">QuantBot</div>
+        <div class="logo-sub">Futures Signal Engine</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-label" id="statusLabel">INACTIVO</span>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-copy">
+      <h1>Señales de <span>Alta Probabilidad</span><br>en Futuros Crypto</h1>
+      <p>Análisis técnico profesional: EMAs, RSI, Volumen, OI, Soportes/Resistencias y gestión de riesgo 1:1.5+ R:R mínimo.</p>
+    </div>
+    <button class="scan-btn" id="scanBtn" onclick="startScan()">
+      <span class="icon">⟳</span>
+      Escanear Mercado
+    </button>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <div class="stat">
+      <span class="stat-label">Escaneados</span>
+      <span class="stat-value total" id="statTotal">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">✅ ENTRAR</span>
+      <span class="stat-value enter" id="statEnter">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">⏳ ESPERAR</span>
+      <span class="stat-value wait" id="statWait">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Descartados</span>
+      <span class="stat-value" style="color:var(--discard)" id="statDiscard">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Última scan</span>
+      <span class="stat-value scan-time" id="statTime">—</span>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar" id="filterBar" style="display:none">
+    <button class="filter-btn active-all" onclick="setFilter('ALL')" data-f="ALL">Todos</button>
+    <button class="filter-btn" onclick="setFilter('ENTER')" data-f="ENTER">✅ ENTRAR</button>
+    <button class="filter-btn" onclick="setFilter('WAIT')"  data-f="WAIT">⏳ ESPERAR</button>
+    <button class="filter-btn" onclick="setFilter('DISCARD')" data-f="DISCARD">❌ DESCARTAR</button>
+  </div>
+
+  <!-- Signals Grid -->
+  <div class="signals-grid" id="signalsGrid">
+    <div class="state-box">
+      <span class="big-icon">📡</span>
+      <h2>Listo para escanear</h2>
+      <p>Pulsa "Escanear Mercado" para analizar los futuros con mayor rendimiento en las últimas 24h.</p>
+    </div>
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="disclaimer">
+    <strong>⚠️ Aviso de riesgo:</strong> Este bot es una herramienta de análisis técnico automatizado. Las señales son sugerencias basadas en indicadores matemáticos y <strong>no constituyen asesoramiento financiero</strong>. El trading de futuros de criptomonedas implica un alto riesgo de pérdida. Opera siempre con gestión de riesgo propia y capital que puedas permitirte perder. Mínimo R:R configurado: 1:1.5.
+  </div>
+
+</div>
+
+<script>
+  let allSignals = [];
+  let currentFilter = 'ALL';
+  let priceIntervals = {};
+
+  function formatPrice(p, ref) {
+    if (!p || isNaN(p)) return '—';
+    const decimals = ref >= 1000 ? 2 : ref >= 1 ? 4 : ref >= 0.01 ? 5 : 6;
+    return p.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  }
+
+  function pctColor(pct, inverse = false) {
+    if (inverse) pct = -pct;
+    if (pct > 0) return 'color:var(--enter)';
+    if (pct < 0) return 'color:var(--danger)';
+    return 'color:var(--text2)';
+  }
+
+  function rrClass(rr) {
+    if (rr >= 2) return 'good';
+    if (rr >= 1.5) return 'ok';
+    return 'bad';
+  }
+
+  function scoreClass(s) {
+    if (s >= 65) return 'high';
+    if (s >= 45) return 'medium';
+    return 'low';
+  }
+
+  function rsiClass(r) {
+    if (r >= 70) return 'yellow';
+    if (r >= 50) return 'green';
+    return 'red';
+  }
+
+  function volClass(v) {
+    if (v >= 1.5) return 'green';
+    if (v >= 1.0) return 'yellow';
+    return 'red';
+  }
+
+  function buildCard(s) {
+    const cls = s.status === 'ENTER' ? 'enter' : s.status === 'WAIT' ? 'wait' : 'discard';
+    const badgeCls = `badge-${cls}`;
+    const badge = s.status === 'ENTER' ? '✅ ENTRAR' : s.status === 'WAIT' ? '⏳ ESPERAR' : '❌ DESCARTAR';
+    const score = s.score || 0;
+    const sc = scoreClass(score);
+
+    let inner = '';
+
+    if (s.status !== 'DISCARD') {
+      // Indicators
+      const rsi15Cls = rsiClass(s.rsi15m);
+      const rsi1Cls  = rsiClass(s.rsi1h);
+      const volCls   = volClass(s.volRatio);
+
+      inner += `
+        <div class="indicators">
+          <span class="ind-chip ${rsi15Cls}">RSI15m ${s.rsi15m}</span>
+          <span class="ind-chip ${rsi1Cls}">RSI1h ${s.rsi1h}</span>
+          <span class="ind-chip ${volCls}">Vol ${s.volRatio}x</span>
+          ${s.volTrend >= 1.1 ? '<span class="ind-chip green">Vol↑</span>' : ''}
+          ${s.emaSlope > 0.1 ? '<span class="ind-chip green">EMA↑</span>' : ''}
+          ${s.openInterest ? '<span class="ind-chip">OI</span>' : ''}
+        </div>
+      `;
+
+      if (s.status === 'ENTER') {
+        inner += `
+          <div class="levels-grid">
+            <div class="level-box entry-box">
+              <div class="level-label entry">Entrada</div>
+              <div class="level-value" id="live-${s.symbol}">${formatPrice(s.entry, s.entry)}</div>
+            </div>
+            <div class="level-box sl-box">
+              <div class="level-label sl">Stop Loss</div>
+              <div class="level-value">${formatPrice(s.stopLoss, s.entry)}</div>
+              <div class="level-pct" style="color:var(--danger)">-${s.slPct}%</div>
+            </div>
+            <div class="level-box tp1-box">
+              <div class="level-label tp1">TP1 (Conservador)</div>
+              <div class="level-value">${formatPrice(s.tp1, s.entry)}</div>
+              <div class="level-pct" style="color:var(--enter)">+${s.tp1Pct}%</div>
+            </div>
+            <div class="level-box tp2-box">
+              <div class="level-label tp2">TP2 (Máximo Est.)</div>
+              <div class="level-value">${formatPrice(s.tp2, s.entry)}</div>
+            </div>
+          </div>
+
+          <div class="rr-row">
+            <span class="rr-label">R:R TP1</span>
+            <span class="rr-value ${rrClass(s.riskReward1)}">1 : ${s.riskReward1}</span>
+            <span class="rr-label" style="margin-left:16px">R:R TP2</span>
+            <span class="rr-value ${rrClass(s.riskReward2)}">1 : ${s.riskReward2}</span>
+          </div>
+        `;
+      }
+
+      if (s.pattern15m) {
+        inner += `<div class="pattern-tag">15m: <span>${s.pattern15m}</span> &nbsp;·&nbsp; 1h: <span>${s.pattern1h || '—'}</span></div>`;
+      }
+
+      if (s.status === 'WAIT' && s.reason) {
+        inner += `<div class="discard-reason" style="border-color:rgba(245,197,24,.2);color:var(--wait)">${s.reason}</div>`;
+      }
+
+      if (s.scoreDetails && s.scoreDetails.length) {
+        inner += `
+          <button class="collapse-btn" onclick="toggleBreakdown(this)">Ver análisis detallado ▾</button>
+          <div class="score-breakdown">
+            <ul>${s.scoreDetails.map(d => `<li>${d}</li>`).join('')}</ul>
+          </div>
+        `;
+      }
+
+    } else {
+      inner += `<div class="discard-reason">${s.reason || 'No cumple los criterios mínimos'}</div>`;
+    }
+
+    return `
+      <div class="signal-card ${cls}">
+        <div class="card-header">
+          <div>
+            <span class="status-badge ${badgeCls}">${badge}</span>
+            <div class="card-symbol" style="margin-top:8px">${s.symbol.replace('USDT','')}<span style="color:var(--text3);font-size:13px">/USDT</span></div>
+            <div class="card-change">+${s.priceChange24h?.toFixed(2)}% 24h</div>
+          </div>
+          <div>
+            <div class="card-price-label">Precio</div>
+            <div class="card-price">${formatPrice(s.price, s.price)}</div>
+          </div>
+        </div>
+
+        ${s.status !== 'DISCARD' ? `
+        <div class="score-bar">
+          <span class="score-label">SCORE</span>
+          <div class="score-track">
+            <div class="score-fill ${sc}" style="width:${Math.min(score, 100)}%"></div>
+          </div>
+          <span class="score-num ${sc}">${score}/100</span>
+        </div>` : ''}
+
+        ${inner}
+      </div>
+    `;
+  }
+
+  function setFilter(f) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.className = 'filter-btn';
+      const df = b.getAttribute('data-f');
+      if (df === f) {
+        if (f === 'ALL') b.classList.add('active-all');
+        else if (f === 'ENTER') b.classList.add('active-enter');
+        else if (f === 'WAIT') b.classList.add('active-wait');
+        else b.classList.add('active-all');
+      }
+    });
+    renderSignals();
+  }
+
+  function renderSignals() {
+    const grid = document.getElementById('signalsGrid');
+    let filtered = currentFilter === 'ALL' ? allSignals : allSignals.filter(s => s.status === currentFilter);
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div class="state-box"><span class="big-icon">🔍</span><h2>Sin resultados</h2><p>No hay señales con el filtro seleccionado.</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(buildCard).join('');
+
+    // Start live price updates for ENTER signals
+    Object.values(priceIntervals).forEach(clearInterval);
+    priceIntervals = {};
+
+    filtered.filter(s => s.status === 'ENTER').forEach(s => {
+      priceIntervals[s.symbol] = setInterval(() => updateLivePrice(s.symbol, s.entry), 5000);
+    });
+  }
+
+  async function updateLivePrice(symbol, ref) {
+    try {
+      const res = await fetch(`/.netlify/functions/get-price?symbol=${symbol}`);
+      const d = await res.json();
+      const el = document.getElementById(`live-${symbol}`);
+      if (el && d.price) {
+        el.textContent = formatPrice(parseFloat(d.price), ref);
+        el.classList.remove('price-updated');
+        void el.offsetWidth;
+        el.classList.add('price-updated');
+      }
+    } catch {}
+  }
+
+  function toggleBreakdown(btn) {
+    const bd = btn.nextElementSibling;
+    bd.classList.toggle('open');
+    btn.textContent = bd.classList.contains('open') ? 'Ocultar análisis ▴' : 'Ver análisis detallado ▾';
+  }
+
+  async function startScan() {
+    const btn = document.getElementById('scanBtn');
+    const dot = document.getElementById('statusDot');
+    const label = document.getElementById('statusLabel');
+    const grid = document.getElementById('signalsGrid');
+    const statsBar = document.getElementById('statsBar');
+    const filterBar = document.getElementById('filterBar');
+
+    btn.disabled = true;
+    btn.classList.add('scanning');
+    btn.querySelector('.icon').textContent = '⟳';
+    dot.classList.add('live');
+    label.textContent = 'ESCANEANDO...';
+
+    // Clear old price intervals
+    Object.values(priceIntervals).forEach(clearInterval);
+    priceIntervals = {};
+
+    grid.innerHTML = `
+      <div class="state-box">
+        <div class="spinner"></div>
+        <h2>Analizando el mercado...</h2>
+        <p>Escaneando Top 20 futuros alcistas · EMAs · RSI · Volumen · OI · Soportes</p>
+      </div>
+    `;
+    statsBar.style.display = 'none';
+    filterBar.style.display = 'none';
+
+    try {
+      const res = await fetch('/.netlify/functions/scan-market');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      allSignals = data.signals || [];
+
+      // Stats
+      document.getElementById('statTotal').textContent   = data.totalScanned || allSignals.length;
+      document.getElementById('statEnter').textContent   = data.enterCount   || 0;
+      document.getElementById('statWait').textContent    = data.waitCount    || 0;
+      document.getElementById('statDiscard').textContent = data.discardCount || 0;
+      document.getElementById('statTime').textContent    = new Date(data.scannedAt).toLocaleTimeString('es-ES');
+
+      statsBar.style.display = 'grid';
+      filterBar.style.display = 'flex';
+
+      currentFilter = 'ALL';
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.className = 'filter-btn';
+        if (b.getAttribute('data-f') === 'ALL') b.classList.add('active-all');
+      });
+
+      renderSignals();
+
+      label.textContent = 'EN VIVO';
+
+    } catch (err) {
+      grid.innerHTML = `
+        <div class="state-box">
+          <span class="big-icon">⚠️</span>
+          <h2>Error al escanear</h2>
+          <p>${err.message}</p>
+          <p style="margin-top:8px;font-size:12px;color:var(--text3)">Verifica tu conexión o inténtalo de nuevo.</p>
+        </div>
+      `;
+      label.textContent = 'ERROR';
+      dot.classList.remove('live');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('scanning');
+      btn.querySelector('.icon').textContent = '⟳';
+    }
+  }
+</script>
+</body>
+</html>
